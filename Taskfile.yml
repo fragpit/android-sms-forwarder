@@ -8,7 +8,19 @@ tasks:
       DOCKER: '{{if .DOCKER_CONTEXT}}docker --context {{.DOCKER_CONTEXT}}{{else}}docker{{end}}'
     cmds:
       - "{{.DOCKER}} build --platform linux/amd64 -t android-sms-forwarder-builder ."
+      - task: prepare-signing
       - "{{.DOCKER}} run --rm --platform linux/amd64 -v \"{{.ROOT_DIR}}:/workspace\" -w /workspace android-sms-forwarder-builder gradle --no-daemon -Dorg.gradle.vfs.watch=false :app:assembleDebug"
+
+  prepare-signing:
+    desc: Create a stable local APK signing key for sideload updates
+    vars:
+      DOCKER_CONTEXT: '{{.DOCKER_CONTEXT | default ""}}'
+      DOCKER: '{{if .DOCKER_CONTEXT}}docker --context {{.DOCKER_CONTEXT}}{{else}}docker{{end}}'
+    status:
+      - test -f signing/sms-forwarder-debug.jks
+    cmds:
+      - mkdir -p signing
+      - "{{.DOCKER}} run --rm --platform linux/amd64 -v \"{{.ROOT_DIR}}:/workspace\" -w /workspace android-sms-forwarder-builder keytool -genkeypair -v -keystore signing/sms-forwarder-debug.jks -storepass android-sms-forwarder -keypass android-sms-forwarder -alias sms-forwarder -keyalg RSA -keysize 4096 -validity 10000 -dname \"CN=Android SMS Forwarder,O=Local,C=US\""
 
   clean:
     desc: Clean Gradle outputs in Docker

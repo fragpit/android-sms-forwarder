@@ -1,8 +1,10 @@
 .gradle/
 .idea/
+.DS_Store
 *.iml
 build/
 local.properties
 captures/
 externalNativeBuild/
 app/build/
+signing/*.jks

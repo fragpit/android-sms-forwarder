@@ -19,6 +19,11 @@ Debug APK:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
+`task apk` creates `signing/sms-forwarder-debug.jks` on the first run. Keep this
+file if you want future APK builds to install over the previous version. If the
+signing key is deleted, Android will reject an update over the already installed
+app and you will need to uninstall the old app first.
+
 ## Telegram bot setup
 
 1. Open Telegram and start a chat with `@BotFather`.
@@ -85,3 +90,14 @@ and similar devices, also check autostart/background activity restrictions.
 
 The optional sender filter accepts comma or newline separated numbers. Empty
 filter means all senders are forwarded.
+
+## Reset app data
+
+Use `Reset app data` inside the app to clear Telegram settings, sender filter,
+retry queue, and duplicate cache. Android Settings can also clear everything:
+
+1. Open Android Settings.
+2. Go to Apps.
+3. Open `SMS Forwarder`.
+4. Open Storage.
+5. Press Clear storage.

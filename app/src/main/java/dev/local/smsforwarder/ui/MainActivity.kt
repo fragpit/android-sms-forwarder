@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
                         viewModel.save()
                     },
                     onSendTest = viewModel::sendTestMessage,
+                    onReset = viewModel::resetAll,
                 )
             }
         }

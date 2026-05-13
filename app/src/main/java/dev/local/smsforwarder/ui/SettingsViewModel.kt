@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import dev.local.smsforwarder.data.AppSettings
 import dev.local.smsforwarder.sms.ForwardingForegroundService
 import dev.local.smsforwarder.sms.RetryScheduler
+import dev.local.smsforwarder.storage.SecurePreferences
 import dev.local.smsforwarder.storage.SettingsRepository
 import dev.local.smsforwarder.telegram.TelegramClient
 import dev.local.smsforwarder.telegram.TelegramMessageFormatter
@@ -76,6 +77,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 )
             }
         }
+    }
+
+    fun resetAll() {
+        ForwardingForegroundService.stop(appContext)
+        SecurePreferences.clearAll(appContext)
+        state = SettingsUiState(status = "All local settings and queued messages cleared")
     }
 
     private fun AppSettings.trimmed(): AppSettings = copy(

@@ -23,4 +23,8 @@ object SecurePreferences {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
         )
     }
+
+    fun clearAll(context: Context) {
+        create(context.applicationContext).edit().clear().apply()
+    }
 }

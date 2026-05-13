@@ -20,6 +20,21 @@ android {
         buildConfig = false
     }
 
+    signingConfigs {
+        create("sideload") {
+            storeFile = rootProject.file("signing/sms-forwarder-debug.jks")
+            storePassword = "android-sms-forwarder"
+            keyAlias = "sms-forwarder"
+            keyPassword = "android-sms-forwarder"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("sideload")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

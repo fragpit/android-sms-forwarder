@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SMS Forwarder</string>
+    <string name="foreground_channel_name">SMS forwarding</string>
+    <string name="foreground_notification_title">SMS forwarding enabled</string>
+    <string name="foreground_notification_text">Incoming SMS will be sent to Telegram.</string>
+</resources>

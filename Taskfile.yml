@@ -1,0 +1,19 @@
+version: "3"
+
+tasks:
+  apk:
+    desc: Build debug APK in Docker
+    vars:
+      DOCKER_CONTEXT: '{{.DOCKER_CONTEXT | default ""}}'
+      DOCKER: '{{if .DOCKER_CONTEXT}}docker --context {{.DOCKER_CONTEXT}}{{else}}docker{{end}}'
+    cmds:
+      - "{{.DOCKER}} build --platform linux/amd64 -t android-sms-forwarder-builder ."
+      - "{{.DOCKER}} run --rm --platform linux/amd64 -v \"{{.ROOT_DIR}}:/workspace\" -w /workspace android-sms-forwarder-builder gradle --no-daemon -Dorg.gradle.vfs.watch=false :app:assembleDebug"
+
+  clean:
+    desc: Clean Gradle outputs in Docker
+    vars:
+      DOCKER_CONTEXT: '{{.DOCKER_CONTEXT | default ""}}'
+      DOCKER: '{{if .DOCKER_CONTEXT}}docker --context {{.DOCKER_CONTEXT}}{{else}}docker{{end}}'
+    cmds:
+      - "{{.DOCKER}} run --rm --platform linux/amd64 -v \"{{.ROOT_DIR}}:/workspace\" -w /workspace android-sms-forwarder-builder gradle --no-daemon -Dorg.gradle.vfs.watch=false clean"

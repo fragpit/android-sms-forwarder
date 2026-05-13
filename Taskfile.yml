@@ -1,31 +1,60 @@
 version: "3"
 
+vars:
+  IMAGE: android-sms-forwarder-builder
+  GRADLE_CACHE_VOLUME: android-sms-forwarder-gradle-cache
+  PLATFORM: linux/amd64
+  GRADLE_ARGS: gradle --no-daemon -Dorg.gradle.vfs.watch=false
+
 tasks:
   apk:
     desc: Build debug APK in Docker
     vars:
-      DOCKER_CONTEXT: '{{.DOCKER_CONTEXT | default ""}}'
-      DOCKER: '{{if .DOCKER_CONTEXT}}docker --context {{.DOCKER_CONTEXT}}{{else}}docker{{end}}'
+      BUILD_ID:
+        sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     cmds:
-      - "{{.DOCKER}} build --platform linux/amd64 -t android-sms-forwarder-builder ."
+      - docker build --platform {{.PLATFORM}} -t {{.IMAGE}} .
       - task: prepare-signing
-      - "{{.DOCKER}} run --rm --platform linux/amd64 -v \"{{.ROOT_DIR}}:/workspace\" -w /workspace android-sms-forwarder-builder gradle --no-daemon -Dorg.gradle.vfs.watch=false :app:assembleDebug"
+      - docker volume create {{.GRADLE_CACHE_VOLUME}}
+      - >-
+        docker run --rm --platform {{.PLATFORM}}
+        -e SMS_FORWARDER_BUILD_ID="{{.BUILD_ID}}"
+        -e GRADLE_USER_HOME=/gradle-cache
+        -v {{.GRADLE_CACHE_VOLUME}}:/gradle-cache
+        -v "{{.ROOT_DIR}}:/workspace"
+        -w /workspace
+        {{.IMAGE}} {{.GRADLE_ARGS}} :app:assembleDebug
 
   prepare-signing:
     desc: Create a stable local APK signing key for sideload updates
-    vars:
-      DOCKER_CONTEXT: '{{.DOCKER_CONTEXT | default ""}}'
-      DOCKER: '{{if .DOCKER_CONTEXT}}docker --context {{.DOCKER_CONTEXT}}{{else}}docker{{end}}'
     status:
       - test -f signing/sms-forwarder-debug.jks
     cmds:
       - mkdir -p signing
-      - "{{.DOCKER}} run --rm --platform linux/amd64 -v \"{{.ROOT_DIR}}:/workspace\" -w /workspace android-sms-forwarder-builder keytool -genkeypair -v -keystore signing/sms-forwarder-debug.jks -storepass android-sms-forwarder -keypass android-sms-forwarder -alias sms-forwarder -keyalg RSA -keysize 4096 -validity 10000 -dname \"CN=Android SMS Forwarder,O=Local,C=US\""
+      - >-
+        docker run --rm --platform {{.PLATFORM}}
+        -v "{{.ROOT_DIR}}:/workspace"
+        -w /workspace
+        {{.IMAGE}} keytool -genkeypair -v
+        -keystore signing/sms-forwarder-debug.jks
+        -storepass android-sms-forwarder
+        -keypass android-sms-forwarder
+        -alias sms-forwarder
+        -keyalg RSA -keysize 4096 -validity 10000
+        -dname "CN=Android SMS Forwarder,O=Local,C=US"
 
   clean:
     desc: Clean Gradle outputs in Docker
-    vars:
-      DOCKER_CONTEXT: '{{.DOCKER_CONTEXT | default ""}}'
-      DOCKER: '{{if .DOCKER_CONTEXT}}docker --context {{.DOCKER_CONTEXT}}{{else}}docker{{end}}'
     cmds:
-      - "{{.DOCKER}} run --rm --platform linux/amd64 -v \"{{.ROOT_DIR}}:/workspace\" -w /workspace android-sms-forwarder-builder gradle --no-daemon -Dorg.gradle.vfs.watch=false clean"
+      - >-
+        docker run --rm --platform {{.PLATFORM}}
+        -e GRADLE_USER_HOME=/gradle-cache
+        -v {{.GRADLE_CACHE_VOLUME}}:/gradle-cache
+        -v "{{.ROOT_DIR}}:/workspace"
+        -w /workspace
+        {{.IMAGE}} {{.GRADLE_ARGS}} clean
+
+  cache-purge:
+    desc: Drop the persistent Gradle cache volume (forces fresh dependency download)
+    cmds:
+      - docker volume rm {{.GRADLE_CACHE_VOLUME}}

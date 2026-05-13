@@ -1,6 +1,7 @@
 package dev.local.smsforwarder.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -41,6 +43,7 @@ import androidx.compose.ui.unit.dp
 fun SettingsScreen(
     state: SettingsUiState,
     permissionsGranted: Boolean,
+    appVersion: String,
     onTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
     onForwardingChange: (Boolean) -> Unit,
@@ -84,111 +87,127 @@ fun SettingsScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(padding),
         ) {
-            Text(
-                text = "SMS Forwarder",
-                style = MaterialTheme.typography.headlineMedium,
-            )
-
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = state.settings.botToken,
-                onValueChange = onTokenChange,
-                label = { Text("Telegram Bot Token") },
-                singleLine = true,
-                visualTransformation = if (state.settings.botToken.isBlank()) {
-                    VisualTransformation.None
-                } else {
-                    PasswordVisualTransformation()
-                },
-            )
-
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = state.settings.chatId,
-                onValueChange = onChatIdChange,
-                label = { Text("Telegram Chat ID") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-            )
-
-            OutlinedTextField(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(112.dp),
-                value = state.settings.senderFilter,
-                onValueChange = onSenderFilterChange,
-                label = { Text("Sender filter, optional") },
-                supportingText = { Text("Comma or newline separated numbers. Empty means all.") },
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp)
+                    .padding(bottom = 36.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Forward SMS",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = if (state.settings.forwardingEnabled) "Enabled" else "Disabled",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = state.settings.forwardingEnabled,
-                    onCheckedChange = onForwardingChange,
-                )
-            }
-
-            if (!permissionsGranted) {
                 Text(
-                    text = "SMS and notification permissions are not granted.",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "SMS Forwarder",
+                    style = MaterialTheme.typography.headlineMedium,
                 )
-                TextButton(onClick = onRequestPermissions) {
-                    Text("Grant permissions")
-                }
-            }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = state.settings.botToken,
+                    onValueChange = onTokenChange,
+                    label = { Text("Telegram Bot Token") },
+                    singleLine = true,
+                    visualTransformation = if (state.settings.botToken.isBlank()) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Button(
-                    modifier = Modifier.weight(1f),
-                    onClick = onSave,
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = state.settings.chatId,
+                    onValueChange = onChatIdChange,
+                    label = { Text("Telegram Chat ID") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                )
+
+                OutlinedTextField(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(112.dp),
+                    value = state.settings.senderFilter,
+                    onValueChange = onSenderFilterChange,
+                    label = { Text("Sender filter, optional") },
+                    supportingText = { Text("Comma or newline separated numbers. Empty means all.") },
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Save settings")
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Forward SMS",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = if (state.settings.forwardingEnabled) "Enabled" else "Disabled",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = state.settings.forwardingEnabled,
+                        onCheckedChange = onForwardingChange,
+                    )
                 }
-                ElevatedButton(
-                    modifier = Modifier.weight(1f),
-                    enabled = !state.isSendingTest,
-                    onClick = onSendTest,
+
+                if (!permissionsGranted) {
+                    Text(
+                        text = "SMS and notification permissions are not granted.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    TextButton(onClick = onRequestPermissions) {
+                        Text("Grant permissions")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(if (state.isSendingTest) "Sending..." else "Send test")
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        onClick = onSave,
+                    ) {
+                        Text("Save settings")
+                    }
+                    ElevatedButton(
+                        modifier = Modifier.weight(1f),
+                        enabled = !state.isSendingTest,
+                        onClick = onSendTest,
+                    ) {
+                        Text(if (state.isSendingTest) "Sending..." else "Send test")
+                    }
+                }
+
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { showResetDialog = true },
+                ) {
+                    Text("Reset app data")
                 }
             }
 
-            OutlinedButton(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { showResetDialog = true },
-            ) {
-                Text("Reset app data")
-            }
+            Text(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(20.dp),
+                text = appVersion,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

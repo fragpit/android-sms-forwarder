@@ -1,9 +1,9 @@
 package dev.local.smsforwarder.ui
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.local.smsforwarder.BuildConfig
 
 /** Main settings activity for Telegram credentials, permissions, and forwarding state. */
 class MainActivity : ComponentActivity() {
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
                 SettingsScreen(
                     state = viewModel.state,
                     permissionsGranted = permissionsGranted,
+                    appVersion = appVersionLabel(),
                     onTokenChange = viewModel::updateToken,
                     onChatIdChange = viewModel::updateChatId,
                     onForwardingChange = viewModel::updateForwardingEnabled,
@@ -70,4 +72,7 @@ class MainActivity : ComponentActivity() {
             add(Manifest.permission.POST_NOTIFICATIONS)
         }
     }.toTypedArray()
+
+    private fun appVersionLabel(): String =
+        "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\nBuild ${BuildConfig.BUILD_ID}"
 }

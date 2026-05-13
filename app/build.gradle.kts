@@ -13,11 +13,16 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
+        buildConfigField(
+            "String",
+            "BUILD_ID",
+            "\"${providers.environmentVariable("SMS_FORWARDER_BUILD_ID").orElse("local").get()}\"",
+        )
     }
 
     buildFeatures {
         compose = true
-        buildConfig = false
+        buildConfig = true
     }
 
     signingConfigs {

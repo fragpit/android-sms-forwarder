@@ -20,7 +20,7 @@ class SettingsRepository(context: Context) {
             .putString(KEY_CHAT_ID, settings.chatId.trim())
             .putBoolean(KEY_FORWARDING_ENABLED, settings.forwardingEnabled)
             .putString(KEY_SENDER_FILTER, settings.senderFilter.trim())
-            .apply()
+            .commit()
     }
 
     companion object {

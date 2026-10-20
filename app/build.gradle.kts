@@ -1,6 +1,29 @@
+import java.security.MessageDigest
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
+
+val signingKeystoreFile = rootProject.file("signing/sms-forwarder-debug.jks")
+val signingChecksumFile = rootProject.file("signing/keystore.sha256")
+val verifySigningKey = tasks.register("verifySigningKey") {
+    val keystore = signingKeystoreFile
+    val checksum = signingChecksumFile
+    inputs.files(keystore, checksum)
+    doLast {
+        val expected = checksum.readText().trim()
+        val actual = MessageDigest.getInstance("SHA-256")
+            .digest(keystore.readBytes())
+            .joinToString("") { "%02x".format(it) }
+        check(expected.matches(Regex("[0-9a-f]{64}")) && actual == expected) {
+            "Signing key does not match signing/keystore.sha256. Restore the existing key."
+        }
+    }
+}
+
+tasks.matching { it.name == "validateSigningDebug" }.configureEach {
+    dependsOn(verifySigningKey)
 }
 
 android {
@@ -27,7 +50,7 @@ android {
 
     signingConfigs {
         create("sideload") {
-            storeFile = rootProject.file("signing/sms-forwarder-debug.jks")
+            storeFile = signingKeystoreFile
             storePassword = "android-sms-forwarder"
             keyAlias = "sms-forwarder"
             keyPassword = "android-sms-forwarder"
@@ -65,6 +88,8 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
+
+    testImplementation(libs.junit)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

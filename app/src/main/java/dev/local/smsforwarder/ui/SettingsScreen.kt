@@ -43,10 +43,12 @@ import androidx.compose.ui.unit.dp
 fun SettingsScreen(
     state: SettingsUiState,
     permissionsGranted: Boolean,
+    callPermissionsGranted: Boolean,
     appVersion: String,
     onTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
     onForwardingChange: (Boolean) -> Unit,
+    onMissedCallForwardingChange: (Boolean) -> Unit,
     onSenderFilterChange: (String) -> Unit,
     onRequestPermissions: () -> Unit,
     onSave: () -> Unit,
@@ -134,7 +136,7 @@ fun SettingsScreen(
                     value = state.settings.senderFilter,
                     onValueChange = onSenderFilterChange,
                     label = { Text("Sender filter, optional") },
-                    supportingText = { Text("Comma or newline separated numbers. Empty means all.") },
+                    supportingText = { Text("SMS only. Comma or newline separated numbers. Empty means all.") },
                 )
 
                 Row(
@@ -159,12 +161,47 @@ fun SettingsScreen(
                     )
                 }
 
-                if (!permissionsGranted) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Notify missed calls",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = "Send the caller number and time to Telegram. All numbers.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = state.settings.missedCallForwardingEnabled,
+                        onCheckedChange = onMissedCallForwardingChange,
+                    )
+                }
+
+                if (state.settings.missedCallForwardingEnabled && !callPermissionsGranted) {
                     Text(
-                        text = "SMS and notification permissions are not granted.",
+                        text = "Allow Phone and Call logs to detect missed calls. " +
+                            "If the prompt is blocked, check this app in Android Settings.",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                }
+
+                if (!permissionsGranted ||
+                    (state.settings.missedCallForwardingEnabled && !callPermissionsGranted)
+                ) {
+                    if (!permissionsGranted) {
+                        Text(
+                            text = "SMS or notification permissions are missing for enabled features.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                     TextButton(onClick = onRequestPermissions) {
                         Text("Grant permissions")
                     }

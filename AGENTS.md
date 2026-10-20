@@ -5,9 +5,13 @@
 This repository contains a minimal Kotlin Android app for a dedicated SIM phone.
 The app receives incoming SMS, reconstructs multipart messages, filters senders,
 and forwards messages to Telegram through the Telegram Bot API over HTTPS.
+It also detects missed cellular calls from the Android call log and sends
+caller number and time notifications through the same encrypted delivery queue.
 
 Primary code paths:
 
+- `app/src/main/java/dev/local/smsforwarder/calls/`: phone-state broadcasts,
+  delayed call-log scans, missed-call classification, and the monitoring cursor.
 - `app/src/main/java/dev/local/smsforwarder/sms/`: SMS receiving, parsing,
   duplicate detection entrypoints, retry scheduling, boot handling, and worker
   based Telegram delivery.
@@ -38,9 +42,14 @@ task clean
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The first APK build creates `signing/sms-forwarder-debug.jks`. Keep this local
-file stable if the APK must install over the previous sideloaded build. It is
-ignored by git and must not be committed.
+Every APK build runs `task prepare-signing`. It reuses the key from
+`~/.local/share/android-sms-forwarder/signing/sms-forwarder-debug.jks`, maintains
+a backup in `~/Documents/Backups/android-sms-forwarder/signing/`, and restores
+the ignored working copy at `signing/sms-forwarder-debug.jks` when needed.
+The key checksum is pinned in the tracked `signing/keystore.sha256` file.
+Never generate a replacement key or change that checksum to bypass a mismatch.
+If all copies are missing, restore the original key from backup. Signing keys
+must not be committed or included in the Docker build context.
 
 For Gradle-level checks inside the builder image, prefer:
 

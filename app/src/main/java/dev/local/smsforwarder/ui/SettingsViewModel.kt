@@ -6,6 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import dev.local.smsforwarder.calls.MissedCallMonitor
+import dev.local.smsforwarder.calls.MissedCallScheduler
 import dev.local.smsforwarder.data.AppSettings
 import dev.local.smsforwarder.sms.ForwardingForegroundService
 import dev.local.smsforwarder.sms.RetryScheduler
@@ -37,6 +39,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         state = state.copy(settings = state.settings.copy(forwardingEnabled = value))
     }
 
+    fun updateMissedCallForwardingEnabled(value: Boolean) {
+        state = state.copy(settings = state.settings.copy(missedCallForwardingEnabled = value))
+    }
+
     fun updateSenderFilter(value: String) {
         state = state.copy(settings = state.settings.copy(senderFilter = value))
     }
@@ -46,9 +52,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         settingsRepository.save(settings)
         state = state.copy(settings = settings, status = "Settings saved")
 
-        if (settings.forwardingEnabled) {
+        if (settings.forwardingEnabled || settings.missedCallForwardingEnabled) {
             ForwardingForegroundService.start(appContext)
             RetryScheduler.enqueue(appContext)
+            MissedCallScheduler.enqueue(appContext)
         } else {
             ForwardingForegroundService.stop(appContext)
         }
@@ -81,7 +88,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun resetAll() {
         ForwardingForegroundService.stop(appContext)
-        SecurePreferences.clearAll(appContext)
+        synchronized(MissedCallMonitor.lock) {
+            SecurePreferences.clearAll(appContext)
+        }
         state = SettingsUiState(status = "All local settings and queued messages cleared")
     }
 

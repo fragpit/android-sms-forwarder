@@ -23,6 +23,6 @@ object RetryScheduler {
             .build()
 
         WorkManager.getInstance(context.applicationContext)
-            .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, request)
+            .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 }

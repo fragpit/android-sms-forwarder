@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import dev.local.smsforwarder.calls.MissedCallScheduler
 import dev.local.smsforwarder.storage.SettingsRepository
 
 /** Restores forwarding support after boot or app update when forwarding is enabled. */
@@ -18,12 +19,13 @@ class BootCompletedReceiver : BroadcastReceiver() {
 
         val appContext = context.applicationContext
         val settings = SettingsRepository(appContext).load()
-        if (!settings.forwardingEnabled) return
+        if (!settings.forwardingEnabled && !settings.missedCallForwardingEnabled) return
 
         if (canStartForegroundService(intent)) {
             ForwardingForegroundService.start(appContext)
         }
         RetryScheduler.enqueue(appContext)
+        MissedCallScheduler.enqueue(appContext)
     }
 
     private fun canStartForegroundService(intent: Intent): Boolean =

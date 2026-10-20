@@ -13,8 +13,8 @@ tasks:
       BUILD_ID:
         sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     cmds:
-      - docker build --platform {{.PLATFORM}} -t {{.IMAGE}} .
       - task: prepare-signing
+      - docker build --platform {{.PLATFORM}} -t {{.IMAGE}} .
       - docker volume create {{.GRADLE_CACHE_VOLUME}}
       - >-
         docker run --rm --platform {{.PLATFORM}}
@@ -22,26 +22,14 @@ tasks:
         -e GRADLE_USER_HOME=/gradle-cache
         -v {{.GRADLE_CACHE_VOLUME}}:/gradle-cache
         -v "{{.ROOT_DIR}}:/workspace"
+        --mount type=bind,source="{{.ROOT_DIR}}/signing/sms-forwarder-debug.jks",target=/workspace/signing/sms-forwarder-debug.jks,readonly
         -w /workspace
         {{.IMAGE}} {{.GRADLE_ARGS}} :app:assembleDebug
 
   prepare-signing:
-    desc: Create a stable local APK signing key for sideload updates
-    status:
-      - test -f signing/sms-forwarder-debug.jks
+    desc: Verify the existing signing key and restore missing local copies
     cmds:
-      - mkdir -p signing
-      - >-
-        docker run --rm --platform {{.PLATFORM}}
-        -v "{{.ROOT_DIR}}:/workspace"
-        -w /workspace
-        {{.IMAGE}} keytool -genkeypair -v
-        -keystore signing/sms-forwarder-debug.jks
-        -storepass android-sms-forwarder
-        -keypass android-sms-forwarder
-        -alias sms-forwarder
-        -keyalg RSA -keysize 4096 -validity 10000
-        -dname "CN=Android SMS Forwarder,O=Local,C=US"
+      - bash "{{.ROOT_DIR}}/scripts/prepare-signing.sh"
 
   clean:
     desc: Clean Gradle outputs in Docker

@@ -5,5 +5,6 @@ data class AppSettings(
     val botToken: String = "",
     val chatId: String = "",
     val forwardingEnabled: Boolean = false,
+    val missedCallForwardingEnabled: Boolean = false,
     val senderFilter: String = "",
 )

@@ -8,4 +8,5 @@ local.properties
 captures/
 externalNativeBuild/
 app/build/
-signing/*.jks
+signing/*.jks*
+__pycache__/

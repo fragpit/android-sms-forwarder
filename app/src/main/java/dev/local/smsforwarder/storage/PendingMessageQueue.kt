@@ -1,14 +1,14 @@
 package dev.local.smsforwarder.storage
 
 import android.content.Context
+import dev.local.smsforwarder.data.MessageKind
 import dev.local.smsforwarder.data.PendingMessage
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Stores only undelivered SMS in encrypted preferences for bounded retries. */
+/** Stores only undelivered notifications in encrypted preferences for bounded retries. */
 class PendingMessageQueue(context: Context) {
     private val prefs = SecurePreferences.create(context.applicationContext)
-    private val lock = Any()
 
     fun enqueue(message: PendingMessage) = synchronized(lock) {
         val next = loadLocked()
@@ -58,6 +58,9 @@ class PendingMessageQueue(context: Context) {
                         receivedAtMillis = item.optLong("receivedAtMillis"),
                         attempts = item.optInt("attempts"),
                         createdAtMillis = item.optLong("createdAtMillis"),
+                        kind = runCatching {
+                            MessageKind.valueOf(item.optString("kind", MessageKind.SMS.name))
+                        }.getOrDefault(MessageKind.SMS),
                     ),
                 )
             }
@@ -74,13 +77,15 @@ class PendingMessageQueue(context: Context) {
                     .put("body", message.body)
                     .put("receivedAtMillis", message.receivedAtMillis)
                     .put("attempts", message.attempts)
-                    .put("createdAtMillis", message.createdAtMillis),
+                    .put("createdAtMillis", message.createdAtMillis)
+                    .put("kind", message.kind.name),
             )
         }
-        prefs.edit().putString(KEY_QUEUE, array.toString()).apply()
+        check(prefs.edit().putString(KEY_QUEUE, array.toString()).commit())
     }
 
     companion object {
+        private val lock = Any()
         private const val KEY_QUEUE = "pending_message_queue"
         private const val MAX_ATTEMPTS = 12
         private const val MAX_QUEUE_SIZE = 50

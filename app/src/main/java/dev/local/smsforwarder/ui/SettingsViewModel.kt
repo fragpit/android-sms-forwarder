@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import dev.local.smsforwarder.calls.MissedCallMonitor
 import dev.local.smsforwarder.calls.MissedCallScheduler
 import dev.local.smsforwarder.data.AppSettings
+import dev.local.smsforwarder.keepalive.KeepAliveScheduler
 import dev.local.smsforwarder.sms.ForwardingForegroundService
 import dev.local.smsforwarder.sms.RetryScheduler
 import dev.local.smsforwarder.storage.SecurePreferences
@@ -26,6 +27,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     var state by mutableStateOf(SettingsUiState(settingsRepository.load()))
         private set
+
+    init {
+        KeepAliveScheduler.schedule(appContext, state.settings)
+    }
 
     fun updateToken(value: String) {
         state = state.copy(settings = state.settings.copy(botToken = value))
@@ -47,9 +52,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         state = state.copy(settings = state.settings.copy(senderFilter = value))
     }
 
+    fun updateKeepAliveEnabled(value: Boolean) {
+        state = state.copy(settings = state.settings.copy(keepAliveEnabled = value))
+    }
+
+    fun updateKeepAliveInterval(value: String) {
+        state = state.copy(keepAliveIntervalInput = value)
+    }
+
     fun save() {
-        val settings = state.settings.trimmed()
-        settingsRepository.save(settings)
+        val settings = persistSettings() ?: return
         state = state.copy(settings = settings, status = "Settings saved")
 
         if (settings.forwardingEnabled || settings.missedCallForwardingEnabled) {
@@ -62,8 +74,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun sendTestMessage() {
-        val settings = state.settings.trimmed()
-        settingsRepository.save(settings)
+        val settings = persistSettings() ?: return
         state = state.copy(isSendingTest = true, status = "Sending test message...")
 
         viewModelScope.launch {
@@ -91,7 +102,35 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         synchronized(MissedCallMonitor.lock) {
             SecurePreferences.clearAll(appContext)
         }
+        KeepAliveScheduler.schedule(appContext, AppSettings())
         state = SettingsUiState(status = "All local settings and queued messages cleared")
+    }
+
+    private fun persistSettings(): AppSettings? {
+        if (state.settings.keepAliveEnabled && !state.validKeepAliveInterval) {
+            state = state.copy(status = "Enter a whole number of hours (at least 1)")
+            return null
+        }
+        val previous = settingsRepository.load()
+        val settings = state.settings.trimmed().copy(
+            keepAliveIntervalHours = state.keepAliveIntervalInput.toIntOrNull()
+                ?.takeIf { it >= 1 } ?: state.settings.keepAliveIntervalHours,
+        )
+        if (!settingsRepository.save(settings)) {
+            state = state.copy(status = "Could not save settings")
+            return null
+        }
+        KeepAliveScheduler.schedule(
+            appContext,
+            settings,
+            restart = previous.keepAliveEnabled != settings.keepAliveEnabled ||
+                previous.keepAliveIntervalHours != settings.keepAliveIntervalHours,
+        )
+        state = state.copy(
+            settings = settings,
+            keepAliveIntervalInput = settings.keepAliveIntervalHours.toString(),
+        )
+        return settings
     }
 
     private fun AppSettings.trimmed(): AppSettings = copy(

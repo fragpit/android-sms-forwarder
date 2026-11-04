@@ -13,6 +13,19 @@ import org.junit.Test
 
 class TelegramMessageFormatterTest {
     @Test
+    fun formatsKeepAliveWithTheCurrentSendTime() {
+        val sentAtMillis = 1_700_000_000_000L
+        val time = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.ofEpochMilli(sentAtMillis))
+        assertEquals(
+            "💚 SMS Forwarder работает\n\n" +
+                "Keep alive: приложение на связи с Telegram.\nВремя: $time",
+            TelegramMessageFormatter.keepAliveMessage(sentAtMillis),
+        )
+    }
+
+    @Test
     fun formatsSmsAndMissedCallsWithTheirOwnMessageType() {
         val sms = PendingMessage(
             id = "sms-1",

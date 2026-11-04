@@ -13,6 +13,8 @@ class SettingsRepository(context: Context) {
         chatId = prefs.getString(KEY_CHAT_ID, "").orEmpty(),
         forwardingEnabled = prefs.getBoolean(KEY_FORWARDING_ENABLED, false),
         missedCallForwardingEnabled = prefs.getBoolean(KEY_MISSED_CALL_FORWARDING_ENABLED, false),
+        keepAliveEnabled = prefs.getBoolean(KEY_KEEP_ALIVE_ENABLED, false),
+        keepAliveIntervalHours = prefs.getInt(KEY_KEEP_ALIVE_INTERVAL_HOURS, 24).coerceAtLeast(1),
         senderFilter = prefs.getString(KEY_SENDER_FILTER, "").orEmpty(),
     )
 
@@ -27,6 +29,8 @@ class SettingsRepository(context: Context) {
             .putString(KEY_CHAT_ID, settings.chatId.trim())
             .putBoolean(KEY_FORWARDING_ENABLED, settings.forwardingEnabled)
             .putBoolean(KEY_MISSED_CALL_FORWARDING_ENABLED, settings.missedCallForwardingEnabled)
+            .putBoolean(KEY_KEEP_ALIVE_ENABLED, settings.keepAliveEnabled)
+            .putInt(KEY_KEEP_ALIVE_INTERVAL_HOURS, settings.keepAliveIntervalHours.coerceAtLeast(1))
             .putString(KEY_SENDER_FILTER, settings.senderFilter.trim())
             .commit()
     }
@@ -37,5 +41,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_FORWARDING_ENABLED = "forwarding_enabled"
         private const val KEY_MISSED_CALL_FORWARDING_ENABLED = "missed_call_forwarding_enabled"
         private const val KEY_SENDER_FILTER = "sender_filter"
+        private const val KEY_KEEP_ALIVE_ENABLED = "keep_alive_enabled"
+        private const val KEY_KEEP_ALIVE_INTERVAL_HOURS = "keep_alive_interval_hours"
     }
 }

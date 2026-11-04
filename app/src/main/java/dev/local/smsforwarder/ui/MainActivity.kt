@@ -1,9 +1,12 @@
 package dev.local.smsforwarder.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -21,6 +24,8 @@ import dev.local.smsforwarder.BuildConfig
 import dev.local.smsforwarder.calls.MissedCallMonitor
 import dev.local.smsforwarder.calls.MissedCallScheduler
 import dev.local.smsforwarder.data.AppSettings
+import dev.local.smsforwarder.keepalive.KeepAliveScheduler
+import dev.local.smsforwarder.storage.SettingsRepository
 
 /** Main settings activity for Telegram credentials, permissions, and forwarding state. */
 class MainActivity : ComponentActivity() {
@@ -35,6 +40,9 @@ class MainActivity : ComponentActivity() {
             }
             var callPermissionsGranted by remember {
                 mutableStateOf(MissedCallMonitor.hasPermissions(this))
+            }
+            var exactAlarmsAllowed by remember {
+                mutableStateOf(KeepAliveScheduler.canScheduleExactly(this))
             }
             val permissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -51,6 +59,11 @@ class MainActivity : ComponentActivity() {
                         permissionsGranted = hasRequiredPermissions()
                         notificationPermissionGranted = hasRequiredPermissions(includeSms = false)
                         callPermissionsGranted = MissedCallMonitor.hasPermissions(this@MainActivity)
+                        exactAlarmsAllowed = KeepAliveScheduler.canScheduleExactly(this@MainActivity)
+                        KeepAliveScheduler.schedule(
+                            this@MainActivity,
+                            SettingsRepository(this@MainActivity).load(),
+                        )
                         MissedCallScheduler.enqueue(this@MainActivity)
                     }
                 }
@@ -61,15 +74,32 @@ class MainActivity : ComponentActivity() {
             SmsForwarderTheme {
                 SettingsScreen(
                     state = viewModel.state,
-                    permissionsGranted = if (viewModel.state.settings.forwardingEnabled ||
-                        !viewModel.state.settings.missedCallForwardingEnabled
-                    ) permissionsGranted else notificationPermissionGranted,
+                    permissionsGranted = when {
+                        viewModel.state.settings.forwardingEnabled -> permissionsGranted
+                        viewModel.state.settings.missedCallForwardingEnabled -> notificationPermissionGranted
+                        viewModel.state.settings.keepAliveEnabled -> true
+                        else -> permissionsGranted
+                    },
                     callPermissionsGranted = callPermissionsGranted,
+                    exactAlarmsAllowed = exactAlarmsAllowed,
                     appVersion = appVersionLabel(),
                     onTokenChange = viewModel::updateToken,
                     onChatIdChange = viewModel::updateChatId,
                     onForwardingChange = viewModel::updateForwardingEnabled,
                     onMissedCallForwardingChange = viewModel::updateMissedCallForwardingEnabled,
+                    onKeepAliveChange = viewModel::updateKeepAliveEnabled,
+                    onKeepAliveIntervalChange = viewModel::updateKeepAliveInterval,
+                    onRequestExactAlarms = {
+                        viewModel.save()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            startActivity(
+                                Intent(
+                                    Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                    Uri.parse("package:$packageName"),
+                                ),
+                            )
+                        }
+                    },
                     onSenderFilterChange = viewModel::updateSenderFilter,
                     onRequestPermissions = {
                         permissionLauncher.launch(
@@ -103,7 +133,8 @@ class MainActivity : ComponentActivity() {
 
     private fun requestedPermissions(settings: AppSettings): Array<String> = requiredPermissions(
         includeCalls = settings.missedCallForwardingEnabled,
-        includeSms = settings.forwardingEnabled || !settings.missedCallForwardingEnabled,
+        includeSms = settings.forwardingEnabled ||
+            (!settings.missedCallForwardingEnabled && !settings.keepAliveEnabled),
     )
 
     private fun requiredPermissions(

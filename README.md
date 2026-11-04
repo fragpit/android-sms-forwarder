@@ -108,6 +108,48 @@ shows `Пропущенный вызов`, the number, and the time. Then answer
 reject another call; neither should generate an alert. With internet disabled,
 miss a call and restore connectivity to check queued delivery.
 
+## Keep alive messages
+
+Enable `Send keep alive`, set `Keep alive interval (hours)`, and press
+`Save settings`. The default interval is 24 hours; any positive whole number
+of hours is accepted. Keep alive is off by default and works independently
+of SMS and missed call forwarding, using the same Telegram bot and chat.
+
+The first message arrives after the selected interval and includes the phone's
+current time. Changing the interval starts a new countdown; saving unchanged
+settings or reopening the app preserves it. Turning the switch off and saving,
+or resetting app data, cancels the schedule. It survives reboot and app updates.
+
+Keep alive uses a wake-up alarm that can run while the phone is in Doze, and
+sends directly during that wake-up. On Android 12+, allow `Alarms & reminders`
+using `Allow scheduled keep alive` if the app shows this button. Without this
+access the app uses an inexact alarm, so delivery can be delayed. Phones that
+exempt the app from battery optimization may already allow exact alarms.
+
+Delivery requires internet access. Failed requests get up to two background
+retries within the current interval. Missed heartbeats do not accumulate, so
+reconnecting does not send a backlog. The app holds a short wake lock only while
+attempting delivery; it does not keep the phone awake between messages.
+Keep alive confirms that the app can reach Telegram; it does not verify SMS or
+call-log permissions.
+
+To verify delivery during sleep on a connected test phone, build the test APK:
+
+```bash
+docker run --rm --platform linux/amd64 -v "$PWD:/workspace" -w /workspace \
+  android-sms-forwarder-builder gradle --no-daemon \
+  -Dorg.gradle.vfs.watch=false :app:assembleDebugAndroidTest
+adb install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb shell am instrument -w -e class \
+  dev.local.smsforwarder.keepalive.KeepAliveSchedulerTest \
+  dev.local.smsforwarder.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+Install the current debug APK first and configure Telegram with keep alive
+enabled. The device test temporarily forces Doze and sends one real heartbeat,
+then restores the original schedule and power state. It also checks that
+unchanged settings preserve the deadline and disabling keep alive cancels it.
+
 ## Disable battery optimization
 
 For stable background delivery:
@@ -148,3 +190,5 @@ retry queue, and duplicate cache. Android Settings can also clear everything:
 3. Open `SMS Forwarder`.
 4. Open Storage.
 5. Press Clear storage.
+
+<!-- Full-access chat visibility check. -->

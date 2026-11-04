@@ -43,4 +43,11 @@ object TelegramMessageFormatter {
     }
 
     fun testMessage(): String = "Test message from Android SMS Forwarder"
+
+    fun keepAliveMessage(sentAtMillis: Long): String = """
+        💚 SMS Forwarder работает
+
+        Keep alive: приложение на связи с Telegram.
+        Время: ${formatter.format(Instant.ofEpochMilli(sentAtMillis))}
+    """.trimIndent()
 }

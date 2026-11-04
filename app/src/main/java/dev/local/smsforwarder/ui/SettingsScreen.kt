@@ -44,11 +44,15 @@ fun SettingsScreen(
     state: SettingsUiState,
     permissionsGranted: Boolean,
     callPermissionsGranted: Boolean,
+    exactAlarmsAllowed: Boolean,
     appVersion: String,
     onTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
     onForwardingChange: (Boolean) -> Unit,
     onMissedCallForwardingChange: (Boolean) -> Unit,
+    onKeepAliveChange: (Boolean) -> Unit,
+    onKeepAliveIntervalChange: (String) -> Unit,
+    onRequestExactAlarms: () -> Unit,
     onSenderFilterChange: (String) -> Unit,
     onRequestPermissions: () -> Unit,
     onSave: () -> Unit,
@@ -181,6 +185,64 @@ fun SettingsScreen(
                         checked = state.settings.missedCallForwardingEnabled,
                         onCheckedChange = onMissedCallForwardingChange,
                     )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Send keep alive",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = "Periodically confirm that the app can reach Telegram.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = state.settings.keepAliveEnabled,
+                        onCheckedChange = onKeepAliveChange,
+                    )
+                }
+
+                if (state.settings.keepAliveEnabled) {
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = state.keepAliveIntervalInput,
+                        onValueChange = onKeepAliveIntervalChange,
+                        label = { Text("Keep alive interval (hours)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = !state.validKeepAliveInterval,
+                        supportingText = {
+                            Text(
+                                if (!state.validKeepAliveInterval) {
+                                    "Enter a whole number of hours (at least 1)."
+                                } else {
+                                    "First message after this interval, including while asleep. " +
+                                        "Save to apply. Internet access is required."
+                                },
+                            )
+                        },
+                    )
+                    if (!exactAlarmsAllowed) {
+                        Text(
+                            text = "Allow Alarms & reminders for keep alive at the selected " +
+                                "interval while the phone is asleep. Without access, delivery may be delayed.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        TextButton(
+                            onClick = onRequestExactAlarms,
+                            enabled = state.validKeepAliveInterval,
+                        ) {
+                            Text("Allow scheduled keep alive")
+                        }
+                    }
                 }
 
                 if (state.settings.missedCallForwardingEnabled && !callPermissionsGranted) {

@@ -6,5 +6,7 @@ data class AppSettings(
     val chatId: String = "",
     val forwardingEnabled: Boolean = false,
     val missedCallForwardingEnabled: Boolean = false,
+    val keepAliveEnabled: Boolean = false,
+    val keepAliveIntervalHours: Int = 24,
     val senderFilter: String = "",
 )

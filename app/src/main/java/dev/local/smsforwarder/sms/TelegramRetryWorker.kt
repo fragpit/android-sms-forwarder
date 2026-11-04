@@ -9,8 +9,10 @@ import dev.local.smsforwarder.storage.SettingsRepository
 import dev.local.smsforwarder.telegram.TelegramClient
 import dev.local.smsforwarder.telegram.TelegramMessageFormatter
 import dev.local.smsforwarder.telegram.TelegramSendResult
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-/** Sends queued SMS and missed-call alerts, keeping failed items for later retry. */
+/** Sends queued notifications, keeping failed items for later retry. */
 class TelegramRetryWorker(
     appContext: Context,
     params: WorkerParameters,
@@ -19,13 +21,16 @@ class TelegramRetryWorker(
     private val queue = PendingMessageQueue(appContext)
     private val telegramClient = TelegramClient()
 
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = deliveryMutex.withLock { deliverQueued() }
+
+    private suspend fun deliverQueued(): Result {
         val settings = settingsRepository.load()
         queue.removeExpiredAndExhausted()
         val messages = queue.peekAll().filter {
             when (it.kind) {
                 MessageKind.SMS -> settings.forwardingEnabled
                 MessageKind.MISSED_CALL -> settings.missedCallForwardingEnabled
+                MessageKind.LOW_BATTERY -> settings.batteryAlertEnabled
             }
         }
         if (messages.isEmpty()) return Result.success()
@@ -33,6 +38,10 @@ class TelegramRetryWorker(
 
         var hasFailure = false
         messages.forEach { message ->
+            if (message.kind == MessageKind.LOW_BATTERY &&
+                (!settingsRepository.load().batteryAlertEnabled ||
+                    queue.peekAll().none { it.id == message.id })
+            ) return@forEach
             when (
                 telegramClient.sendMessage(
                     token = settings.botToken,
@@ -50,5 +59,9 @@ class TelegramRetryWorker(
 
         queue.removeExpiredAndExhausted()
         return if (hasFailure) Result.retry() else Result.success()
+    }
+
+    companion object {
+        internal val deliveryMutex = Mutex()
     }
 }

@@ -8,5 +8,7 @@ data class AppSettings(
     val missedCallForwardingEnabled: Boolean = false,
     val keepAliveEnabled: Boolean = false,
     val keepAliveIntervalHours: Int = 24,
+    val batteryAlertEnabled: Boolean = false,
+    val batteryAlertThreshold: Int = 20,
     val senderFilter: String = "",
 )

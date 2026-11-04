@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import dev.local.smsforwarder.battery.BatteryAlertScheduler
 import dev.local.smsforwarder.calls.MissedCallScheduler
 import dev.local.smsforwarder.keepalive.KeepAliveScheduler
 import dev.local.smsforwarder.storage.SettingsRepository
@@ -24,6 +25,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
         val appContext = context.applicationContext
         val settings = SettingsRepository(appContext).load()
         KeepAliveScheduler.schedule(appContext, settings)
+        BatteryAlertScheduler.schedule(appContext, settings)
         if (alarmPermissionGranted) return
         if (!settings.forwardingEnabled && !settings.missedCallForwardingEnabled) return
 

@@ -1,6 +1,7 @@
 package dev.local.smsforwarder.storage
 
 import android.content.Context
+import android.content.SharedPreferences
 import dev.local.smsforwarder.data.MessageKind
 import dev.local.smsforwarder.data.PendingMessage
 import org.json.JSONArray
@@ -10,13 +11,16 @@ import org.json.JSONObject
 class PendingMessageQueue(context: Context) {
     private val prefs = SecurePreferences.create(context.applicationContext)
 
-    fun enqueue(message: PendingMessage) = synchronized(lock) {
+    fun enqueue(
+        message: PendingMessage,
+        updateState: SharedPreferences.Editor.() -> Unit = {},
+    ) = synchronized(lock) {
         val next = loadLocked()
             .filterNot { it.id == message.id }
             .filter { System.currentTimeMillis() - it.createdAtMillis <= MAX_AGE_MILLIS }
             .plus(message)
             .takeLast(MAX_QUEUE_SIZE)
-        saveLocked(next)
+        saveLocked(next, updateState)
     }
 
     fun peekAll(): List<PendingMessage> = synchronized(lock) {
@@ -32,6 +36,10 @@ class PendingMessageQueue(context: Context) {
 
     fun remove(id: String) = synchronized(lock) {
         saveLocked(loadLocked().filterNot { it.id == id })
+    }
+
+    fun removeKind(kind: MessageKind) = synchronized(lock) {
+        saveLocked(loadLocked().filterNot { it.kind == kind })
     }
 
     fun removeExpiredAndExhausted() = synchronized(lock) {
@@ -67,7 +75,10 @@ class PendingMessageQueue(context: Context) {
         }.filter { it.id.isNotBlank() }
     }
 
-    private fun saveLocked(messages: List<PendingMessage>) {
+    private fun saveLocked(
+        messages: List<PendingMessage>,
+        updateState: SharedPreferences.Editor.() -> Unit = {},
+    ) {
         val array = JSONArray()
         messages.forEach { message ->
             array.put(
@@ -81,7 +92,7 @@ class PendingMessageQueue(context: Context) {
                     .put("kind", message.kind.name),
             )
         }
-        check(prefs.edit().putString(KEY_QUEUE, array.toString()).commit())
+        check(prefs.edit().apply(updateState).putString(KEY_QUEUE, array.toString()).commit())
     }
 
     companion object {

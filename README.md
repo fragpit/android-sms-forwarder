@@ -3,7 +3,7 @@
 Minimal Kotlin Android app for a separate SIM phone. It receives incoming SMS,
 reconstructs multipart messages, and forwards them to Telegram through the
 Telegram Bot API over HTTPS. It can also notify Telegram about missed cellular
-calls, including the caller number and call time.
+calls, including the caller number and call time, and low battery charge.
 
 ## Build APK
 
@@ -122,7 +122,7 @@ or resetting app data, cancels the schedule. It survives reboot and app updates.
 
 Keep alive uses a wake-up alarm that can run while the phone is in Doze, and
 sends directly during that wake-up. On Android 12+, allow `Alarms & reminders`
-using `Allow scheduled keep alive` if the app shows this button. Without this
+using `Allow scheduled alerts` if the app shows this button. Without this
 access the app uses an inexact alarm, so delivery can be delayed. Phones that
 exempt the app from battery optimization may already allow exact alarms.
 
@@ -150,6 +150,32 @@ enabled. The device test temporarily forces Doze and sends one real heartbeat,
 then restores the original schedule and power state. It also checks that
 unchanged settings preserve the deadline and disabling keep alive cancels it.
 
+## Low battery notifications
+
+Enable `Notify low battery`, set `Low battery threshold (%)`, and press
+`Save settings`. The threshold accepts whole percentages from 1 to 100 and
+defaults to 20%. The feature is off by default and uses the same Telegram bot
+and chat independently of SMS, missed calls, and keep alive.
+
+The app checks charge shortly after enabling the feature or changing the
+threshold, then every 15 minutes using wake-up alarms. Allow `Alarms & reminders`
+using `Allow scheduled alerts` when prompted. Android may delay checks without
+this access or under device-specific power restrictions. The schedule survives
+reboot and app updates without keeping a service or wake lock running between
+checks.
+
+An alert includes the observed charge, threshold, and detection time. Charge
+must be strictly below the threshold: with 20% configured, 20% does not alert
+and 19% does. Enabling the feature when already below the threshold also sends
+an alert, including while charging. Only one alert is created until a check
+observes charge at or above the threshold again. Saving unchanged settings or
+restarting the app does not repeat it. Changing the threshold starts a new check.
+
+Failed sends use the encrypted retry queue. Observed charge recovery, disabling
+the feature, changing the threshold, or resetting app data removes pending
+battery alerts so they do not arrive after they become irrelevant. Battery
+alerts share the queue's size, age, and retry limits.
+
 ## Disable battery optimization
 
 For stable background delivery:
@@ -168,8 +194,8 @@ and similar devices, also check autostart/background activity restrictions.
 - SMS contents and caller numbers are never logged.
 - Delivered SMS and call history are not stored by the app. Call monitoring
   retains only an activation time and the last processed call-log row ID.
-- Undelivered SMS and missed-call alerts share an encrypted retry queue, capped
-  at 50 messages, 12 delivery attempts, and 24 hours.
+- Undelivered SMS, missed-call alerts, and battery alerts share an encrypted
+  retry queue, capped at 50 messages, 12 delivery attempts, and 24 hours.
 - Network security config disables cleartext traffic and uses HTTPS for
   `api.telegram.org`.
 - The encrypted preferences file is excluded from Android backup and device

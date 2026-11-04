@@ -21,6 +21,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.local.smsforwarder.BuildConfig
+import dev.local.smsforwarder.battery.BatteryAlertScheduler
 import dev.local.smsforwarder.calls.MissedCallMonitor
 import dev.local.smsforwarder.calls.MissedCallScheduler
 import dev.local.smsforwarder.data.AppSettings
@@ -64,6 +65,10 @@ class MainActivity : ComponentActivity() {
                             this@MainActivity,
                             SettingsRepository(this@MainActivity).load(),
                         )
+                        BatteryAlertScheduler.schedule(
+                            this@MainActivity,
+                            SettingsRepository(this@MainActivity).load(),
+                        )
                         MissedCallScheduler.enqueue(this@MainActivity)
                     }
                 }
@@ -77,7 +82,8 @@ class MainActivity : ComponentActivity() {
                     permissionsGranted = when {
                         viewModel.state.settings.forwardingEnabled -> permissionsGranted
                         viewModel.state.settings.missedCallForwardingEnabled -> notificationPermissionGranted
-                        viewModel.state.settings.keepAliveEnabled -> true
+                        viewModel.state.settings.keepAliveEnabled ||
+                            viewModel.state.settings.batteryAlertEnabled -> true
                         else -> permissionsGranted
                     },
                     callPermissionsGranted = callPermissionsGranted,
@@ -87,6 +93,8 @@ class MainActivity : ComponentActivity() {
                     onChatIdChange = viewModel::updateChatId,
                     onForwardingChange = viewModel::updateForwardingEnabled,
                     onMissedCallForwardingChange = viewModel::updateMissedCallForwardingEnabled,
+                    onBatteryAlertChange = viewModel::updateBatteryAlertEnabled,
+                    onBatteryThresholdChange = viewModel::updateBatteryThreshold,
                     onKeepAliveChange = viewModel::updateKeepAliveEnabled,
                     onKeepAliveIntervalChange = viewModel::updateKeepAliveInterval,
                     onRequestExactAlarms = {

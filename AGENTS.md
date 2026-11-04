@@ -42,6 +42,12 @@ task clean
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
+After every successful APK build, install the built APK on the connected phone
+using `adb install -r app/build/outputs/apk/debug/app-debug.apk`. Installation is
+part of the build workflow and does not require another user request. Confirm
+that installation succeeds before reporting completion. If the phone is
+unavailable or installation fails, report the blocker explicitly.
+
 Every APK build runs `task prepare-signing`. It reuses the key from
 `~/.local/share/android-sms-forwarder/signing/sms-forwarder-debug.jks`, maintains
 a backup in `~/Documents/Backups/android-sms-forwarder/signing/`, and restores

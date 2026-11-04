@@ -50,6 +50,8 @@ fun SettingsScreen(
     onChatIdChange: (String) -> Unit,
     onForwardingChange: (Boolean) -> Unit,
     onMissedCallForwardingChange: (Boolean) -> Unit,
+    onBatteryAlertChange: (Boolean) -> Unit,
+    onBatteryThresholdChange: (String) -> Unit,
     onKeepAliveChange: (Boolean) -> Unit,
     onKeepAliveIntervalChange: (String) -> Unit,
     onRequestExactAlarms: () -> Unit,
@@ -194,6 +196,50 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
+                            text = "Notify low battery",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = "Send one Telegram alert when charge falls below the threshold.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = state.settings.batteryAlertEnabled,
+                        onCheckedChange = onBatteryAlertChange,
+                    )
+                }
+
+                if (state.settings.batteryAlertEnabled) {
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = state.batteryThresholdInput,
+                        onValueChange = onBatteryThresholdChange,
+                        label = { Text("Low battery threshold (%)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = !state.validBatteryThreshold,
+                        supportingText = {
+                            Text(
+                                if (!state.validBatteryThreshold) {
+                                    "Enter a whole percentage from 1 to 100."
+                                } else {
+                                    "Checked every 15 minutes, including while asleep. " +
+                                        "Rearms when charge reaches the threshold again. Save to apply."
+                                },
+                            )
+                        },
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
                             text = "Send keep alive",
                             style = MaterialTheme.typography.titleMedium,
                         )
@@ -229,19 +275,23 @@ fun SettingsScreen(
                             )
                         },
                     )
-                    if (!exactAlarmsAllowed) {
-                        Text(
-                            text = "Allow Alarms & reminders for keep alive at the selected " +
-                                "interval while the phone is asleep. Without access, delivery may be delayed.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                        TextButton(
-                            onClick = onRequestExactAlarms,
-                            enabled = state.validKeepAliveInterval,
-                        ) {
-                            Text("Allow scheduled keep alive")
-                        }
+                }
+
+                if (!exactAlarmsAllowed &&
+                    (state.settings.keepAliveEnabled || state.settings.batteryAlertEnabled)
+                ) {
+                    Text(
+                        text = "Allow Alarms & reminders for keep alive and battery checks " +
+                            "while the phone is asleep. Without access, alerts may be delayed.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    TextButton(
+                        onClick = onRequestExactAlarms,
+                        enabled = (!state.settings.keepAliveEnabled || state.validKeepAliveInterval) &&
+                            (!state.settings.batteryAlertEnabled || state.validBatteryThreshold),
+                    ) {
+                        Text("Allow scheduled alerts")
                     }
                 }
 

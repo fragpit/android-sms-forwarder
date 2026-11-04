@@ -6,9 +6,13 @@ import dev.local.smsforwarder.data.AppSettings
 data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
     val keepAliveIntervalInput: String = settings.keepAliveIntervalHours.toString(),
+    val batteryThresholdInput: String = settings.batteryAlertThreshold.toString(),
     val isSendingTest: Boolean = false,
     val status: String? = null,
 ) {
+    val validBatteryThreshold: Boolean
+        get() = batteryThresholdInput.toIntOrNull() in 1..100
+
     val validKeepAliveInterval: Boolean
         get() = (keepAliveIntervalInput.toIntOrNull() ?: 0) >= 1
 }

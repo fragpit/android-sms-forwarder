@@ -6,6 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import dev.local.smsforwarder.battery.BatteryAlertScheduler
+import dev.local.smsforwarder.battery.BatteryMonitor
 import dev.local.smsforwarder.calls.MissedCallMonitor
 import dev.local.smsforwarder.calls.MissedCallScheduler
 import dev.local.smsforwarder.data.AppSettings
@@ -30,6 +32,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     init {
         KeepAliveScheduler.schedule(appContext, state.settings)
+        BatteryAlertScheduler.schedule(appContext, state.settings)
     }
 
     fun updateToken(value: String) {
@@ -58,6 +61,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun updateKeepAliveInterval(value: String) {
         state = state.copy(keepAliveIntervalInput = value)
+    }
+
+    fun updateBatteryAlertEnabled(value: Boolean) {
+        state = state.copy(settings = state.settings.copy(batteryAlertEnabled = value))
+    }
+
+    fun updateBatteryThreshold(value: String) {
+        state = state.copy(batteryThresholdInput = value)
     }
 
     fun save() {
@@ -99,10 +110,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun resetAll() {
         ForwardingForegroundService.stop(appContext)
-        synchronized(MissedCallMonitor.lock) {
-            SecurePreferences.clearAll(appContext)
+        synchronized(BatteryMonitor.lock) {
+            synchronized(MissedCallMonitor.lock) {
+                SecurePreferences.clearAll(appContext)
+            }
         }
         KeepAliveScheduler.schedule(appContext, AppSettings())
+        BatteryAlertScheduler.schedule(appContext, AppSettings())
         state = SettingsUiState(status = "All local settings and queued messages cleared")
     }
 
@@ -111,8 +125,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             state = state.copy(status = "Enter a whole number of hours (at least 1)")
             return null
         }
+        if (state.settings.batteryAlertEnabled && !state.validBatteryThreshold) {
+            state = state.copy(status = "Enter a whole battery percentage from 1 to 100")
+            return null
+        }
         val previous = settingsRepository.load()
         val settings = state.settings.trimmed().copy(
+            batteryAlertThreshold = state.batteryThresholdInput.toIntOrNull()
+                ?.takeIf { it in 1..100 } ?: state.settings.batteryAlertThreshold,
             keepAliveIntervalHours = state.keepAliveIntervalInput.toIntOrNull()
                 ?.takeIf { it >= 1 } ?: state.settings.keepAliveIntervalHours,
         )
@@ -126,8 +146,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             restart = previous.keepAliveEnabled != settings.keepAliveEnabled ||
                 previous.keepAliveIntervalHours != settings.keepAliveIntervalHours,
         )
+        BatteryAlertScheduler.schedule(
+            appContext,
+            settings,
+            restart = previous.batteryAlertEnabled != settings.batteryAlertEnabled ||
+                previous.batteryAlertThreshold != settings.batteryAlertThreshold,
+        )
+        if (settings.batteryAlertEnabled) RetryScheduler.enqueue(appContext)
         state = state.copy(
             settings = settings,
+            batteryThresholdInput = settings.batteryAlertThreshold.toString(),
             keepAliveIntervalInput = settings.keepAliveIntervalHours.toString(),
         )
         return settings

@@ -7,7 +7,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/** Formats SMS and missed calls into the Telegram message body shown to the target chat. */
+/** Formats queued notifications into the Telegram body shown to the target chat. */
 object TelegramMessageFormatter {
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
         .withZone(ZoneId.systemDefault())
@@ -21,33 +21,47 @@ object TelegramMessageFormatter {
                 smsTimestampMillis = message.receivedAtMillis,
             ),
         )
-        MessageKind.MISSED_CALL -> """
-            📞 Пропущенный вызов
-
-            От: ${message.sender}
-            Время: ${formatter.format(Instant.ofEpochMilli(message.receivedAtMillis))}
-        """.trimIndent()
+        MessageKind.LOW_BATTERY -> notification(
+            "Низкий заряд батареи",
+            "${message.body}\n" +
+                "Время: ${formatter.format(Instant.ofEpochMilli(message.receivedAtMillis))}",
+        )
+        MessageKind.MISSED_CALL -> notification(
+            "Пропущенный вызов",
+            """
+                От: ${message.sender}
+                Время: ${formatter.format(Instant.ofEpochMilli(message.receivedAtMillis))}
+            """.trimIndent(),
+        )
     }
 
     fun formatSms(sms: IncomingSms): String {
         val time = formatter.format(Instant.ofEpochMilli(sms.receivedAtMillis))
-        return """
-            📩 SMS получено
+        return notification(
+            "SMS получено",
+            """
+                От: ${sms.sender}
+                Время: $time
 
-            От: ${sms.sender}
-            Время: $time
-
-            Сообщение:
-            ${sms.body}
-        """.trimIndent()
+                Сообщение:
+                ${sms.body}
+            """.trimIndent(),
+        )
     }
 
-    fun testMessage(): String = "Test message from Android SMS Forwarder"
+    fun testMessage(): String = notification(
+        "Проверка связи",
+        "Тестовое сообщение от Android SMS Forwarder.",
+    )
 
-    fun keepAliveMessage(sentAtMillis: Long): String = """
-        💚 SMS Forwarder работает
+    fun keepAliveMessage(sentAtMillis: Long): String = notification(
+        "SMS Forwarder работает",
+        """
+            Приложение на связи с Telegram.
+            Время: ${formatter.format(Instant.ofEpochMilli(sentAtMillis))}
+        """.trimIndent(),
+    )
 
-        Keep alive: приложение на связи с Telegram.
-        Время: ${formatter.format(Instant.ofEpochMilli(sentAtMillis))}
-    """.trimIndent()
+    private fun notification(subject: String, body: String): String =
+        "📩 Новое уведомление\n\nТема: $subject\n\n$body"
 }

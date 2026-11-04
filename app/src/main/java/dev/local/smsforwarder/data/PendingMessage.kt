@@ -11,8 +11,9 @@ data class PendingMessage(
     val kind: MessageKind = MessageKind.SMS,
 )
 
-/** Distinguishes SMS from missed calls while preserving existing queue entries. */
+/** Distinguishes notification types while preserving existing queue entries. */
 enum class MessageKind {
     SMS,
     MISSED_CALL,
+    LOW_BATTERY,
 }

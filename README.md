@@ -126,6 +126,11 @@ using `Allow scheduled alerts` if the app shows this button. Without this
 access the app uses an inexact alarm, so delivery can be delayed. Phones that
 exempt the app from battery optimization may already allow exact alarms.
 
+Each alarm schedules the next one, so a crash or process kill at the wrong
+moment could stop the chain. A 15-minute background watchdog re-arms keep alive
+and low battery alarms from their saved deadlines; an overdue deadline fires
+right away. The watchdog only runs while one of these features is enabled.
+
 Delivery requires internet access. Failed requests get up to two background
 retries within the current interval. Missed heartbeats do not accumulate, so
 reconnecting does not send a backlog. The app holds a short wake lock only while

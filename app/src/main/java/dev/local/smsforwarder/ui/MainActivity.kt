@@ -27,6 +27,7 @@ import dev.local.smsforwarder.calls.MissedCallScheduler
 import dev.local.smsforwarder.data.AppSettings
 import dev.local.smsforwarder.keepalive.KeepAliveScheduler
 import dev.local.smsforwarder.storage.SettingsRepository
+import dev.local.smsforwarder.watchdog.AlarmWatchdog
 
 /** Main settings activity for Telegram credentials, permissions, and forwarding state. */
 class MainActivity : ComponentActivity() {
@@ -66,6 +67,10 @@ class MainActivity : ComponentActivity() {
                             SettingsRepository(this@MainActivity).load(),
                         )
                         BatteryAlertScheduler.schedule(
+                            this@MainActivity,
+                            SettingsRepository(this@MainActivity).load(),
+                        )
+                        AlarmWatchdog.sync(
                             this@MainActivity,
                             SettingsRepository(this@MainActivity).load(),
                         )

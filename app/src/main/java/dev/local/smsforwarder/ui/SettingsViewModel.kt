@@ -19,6 +19,7 @@ import dev.local.smsforwarder.storage.SettingsRepository
 import dev.local.smsforwarder.telegram.TelegramClient
 import dev.local.smsforwarder.telegram.TelegramMessageFormatter
 import dev.local.smsforwarder.telegram.TelegramSendResult
+import dev.local.smsforwarder.watchdog.AlarmWatchdog
 import kotlinx.coroutines.launch
 
 /** ViewModel that owns settings state and Telegram test-send actions. */
@@ -117,6 +118,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
         KeepAliveScheduler.schedule(appContext, AppSettings())
         BatteryAlertScheduler.schedule(appContext, AppSettings())
+        AlarmWatchdog.sync(appContext, AppSettings())
         state = SettingsUiState(status = "All local settings and queued messages cleared")
     }
 
@@ -152,6 +154,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             restart = previous.batteryAlertEnabled != settings.batteryAlertEnabled ||
                 previous.batteryAlertThreshold != settings.batteryAlertThreshold,
         )
+        AlarmWatchdog.sync(appContext, settings)
         if (settings.batteryAlertEnabled) RetryScheduler.enqueue(appContext)
         state = state.copy(
             settings = settings,

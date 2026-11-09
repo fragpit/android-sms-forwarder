@@ -9,6 +9,7 @@ import dev.local.smsforwarder.battery.BatteryAlertScheduler
 import dev.local.smsforwarder.calls.MissedCallScheduler
 import dev.local.smsforwarder.keepalive.KeepAliveScheduler
 import dev.local.smsforwarder.storage.SettingsRepository
+import dev.local.smsforwarder.watchdog.AlarmWatchdog
 
 /** Restores forwarding support after boot or app update when forwarding is enabled. */
 class BootCompletedReceiver : BroadcastReceiver() {
@@ -26,6 +27,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
         val settings = SettingsRepository(appContext).load()
         KeepAliveScheduler.schedule(appContext, settings)
         BatteryAlertScheduler.schedule(appContext, settings)
+        AlarmWatchdog.sync(appContext, settings)
         if (alarmPermissionGranted) return
         if (!settings.forwardingEnabled && !settings.missedCallForwardingEnabled) return
 

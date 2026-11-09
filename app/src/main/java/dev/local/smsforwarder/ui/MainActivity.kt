@@ -168,5 +168,6 @@ class MainActivity : ComponentActivity() {
     }.toTypedArray()
 
     private fun appVersionLabel(): String =
-        "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\nBuild ${BuildConfig.BUILD_ID}"
+        "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n" +
+            "Build ${formatBuildTime(BuildConfig.BUILD_ID)}"
 }

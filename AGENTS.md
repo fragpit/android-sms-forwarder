@@ -104,6 +104,10 @@ manifest entries, dependencies, signing, Dockerfile, or Gradle configuration.
   editing and avoid reverting unrelated changes.
 - Keep README updates aligned with actual `Taskfile.yml`, manifest permissions,
   and user-visible settings.
+- This repository has no feature-branch or PR workflow: commit and push
+  directly to `master`. Do not create feature branches. Stage only files that
+  belong to the change and leave unrelated untracked files such as `CLAUDE.md`
+  out of the commit.
 - After editing Markdown files, run:
 
   ```bash

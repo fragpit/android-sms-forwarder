@@ -5,6 +5,7 @@ import dev.local.smsforwarder.battery.BatteryMonitor
 import dev.local.smsforwarder.calls.MissedCallMonitor
 import dev.local.smsforwarder.data.AppSettings
 import dev.local.smsforwarder.data.MessageKind
+import dev.local.smsforwarder.keepalive.KeepAliveSchedule
 
 /** Reads and writes forwarding settings without exposing Telegram secrets to logs. */
 class SettingsRepository(context: Context) {
@@ -17,7 +18,12 @@ class SettingsRepository(context: Context) {
         forwardingEnabled = prefs.getBoolean(KEY_FORWARDING_ENABLED, false),
         missedCallForwardingEnabled = prefs.getBoolean(KEY_MISSED_CALL_FORWARDING_ENABLED, false),
         keepAliveEnabled = prefs.getBoolean(KEY_KEEP_ALIVE_ENABLED, false),
-        keepAliveIntervalHours = prefs.getInt(KEY_KEEP_ALIVE_INTERVAL_HOURS, 24).coerceAtLeast(1),
+        keepAliveIntervalHours = KeepAliveSchedule.normalizeInterval(
+            prefs.getInt(KEY_KEEP_ALIVE_INTERVAL_HOURS, KeepAliveSchedule.DEFAULT_INTERVAL_HOURS),
+        ),
+        keepAliveTimeMinutes = KeepAliveSchedule.normalizeTime(
+            prefs.getInt(KEY_KEEP_ALIVE_TIME_MINUTES, KeepAliveSchedule.DEFAULT_TIME_MINUTES),
+        ),
         batteryAlertEnabled = prefs.getBoolean(KEY_BATTERY_ALERT_ENABLED, false),
         batteryAlertThreshold = prefs.getInt(KEY_BATTERY_ALERT_THRESHOLD, 20).coerceIn(1, 100),
         senderFilter = prefs.getString(KEY_SENDER_FILTER, "").orEmpty(),
@@ -45,7 +51,14 @@ class SettingsRepository(context: Context) {
             .putBoolean(KEY_FORWARDING_ENABLED, settings.forwardingEnabled)
             .putBoolean(KEY_MISSED_CALL_FORWARDING_ENABLED, settings.missedCallForwardingEnabled)
             .putBoolean(KEY_KEEP_ALIVE_ENABLED, settings.keepAliveEnabled)
-            .putInt(KEY_KEEP_ALIVE_INTERVAL_HOURS, settings.keepAliveIntervalHours.coerceAtLeast(1))
+            .putInt(
+                KEY_KEEP_ALIVE_INTERVAL_HOURS,
+                KeepAliveSchedule.normalizeInterval(settings.keepAliveIntervalHours),
+            )
+            .putInt(
+                KEY_KEEP_ALIVE_TIME_MINUTES,
+                KeepAliveSchedule.normalizeTime(settings.keepAliveTimeMinutes),
+            )
             .putString(KEY_SENDER_FILTER, settings.senderFilter.trim())
             .commit()
         if (saved && batteryChanged) {
@@ -64,5 +77,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_SENDER_FILTER = "sender_filter"
         private const val KEY_KEEP_ALIVE_ENABLED = "keep_alive_enabled"
         private const val KEY_KEEP_ALIVE_INTERVAL_HOURS = "keep_alive_interval_hours"
+        private const val KEY_KEEP_ALIVE_TIME_MINUTES = "keep_alive_time_minutes"
     }
 }

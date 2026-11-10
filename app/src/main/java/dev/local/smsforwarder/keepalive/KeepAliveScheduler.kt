@@ -17,7 +17,13 @@ import dev.local.smsforwarder.storage.SecurePreferences
 import dev.local.smsforwarder.storage.SettingsRepository
 import java.util.concurrent.TimeUnit
 
-/** Maintains a wake-up alarm so keep alive does not wait for Doze maintenance windows. */
+/**
+ * Maintains a wake-up alarm so keep alive does not wait for Doze maintenance windows.
+ *
+ * Deadlines are wall-clock slots from [KeepAliveSchedule]. A future deadline is always
+ * recomputed, which realigns it after time zone, clock, or settings changes; an overdue
+ * deadline is kept so a slot missed while the phone was off fires once right away.
+ */
 object KeepAliveScheduler {
     internal const val KEY_NEXT_AT = "keep_alive_next_at"
     internal const val KEY_LAST_SENT_AT = "keep_alive_last_sent_at"
@@ -40,9 +46,8 @@ object KeepAliveScheduler {
             return@synchronized
         }
         val previous = prefs.getLong(KEY_NEXT_AT, 0L)
-        val nextAt = if (restart || previous <= 0L) {
-            System.currentTimeMillis() + intervalMillis(settings)
-        } else previous
+        val now = System.currentTimeMillis()
+        val nextAt = if (!restart && previous in 1L..now) previous else nextSlotAfter(now, settings)
         if (restart) workManager.cancelUniqueWork(RETRY_WORK_NAME)
         check(prefs.edit().putLong(KEY_NEXT_AT, nextAt).commit())
         armAlarm(context, nextAt)
@@ -55,7 +60,7 @@ object KeepAliveScheduler {
         val dueAt = prefs.getLong(KEY_NEXT_AT, 0L)
         val now = System.currentTimeMillis()
         if (dueAt <= 0L || dueAt > now) return@synchronized null
-        val nextAt = now + intervalMillis(settings)
+        val nextAt = nextSlotAfter(now, settings)
         check(prefs.edit().putLong(KEY_NEXT_AT, nextAt).commit())
         armAlarm(context, nextAt)
         WorkManager.getInstance(context.applicationContext).cancelUniqueWork(RETRY_WORK_NAME)
@@ -89,10 +94,17 @@ object KeepAliveScheduler {
             .enqueueUniqueWork(RETRY_WORK_NAME, ExistingWorkPolicy.REPLACE, request)
     }
 
-    private fun intervalMillis(settings: AppSettings): Long =
-        TimeUnit.HOURS.toMillis(settings.keepAliveIntervalHours.coerceAtLeast(1).toLong())
+    fun nextAt(context: Context): Long =
+        SecurePreferences.create(context).getLong(KEY_NEXT_AT, 0L)
 
-    private fun armAlarm(context: Context, nextAt: Long) {
+    private fun nextSlotAfter(now: Long, settings: AppSettings): Long =
+        KeepAliveSchedule.nextSlotAfter(
+            nowMillis = now,
+            intervalHours = settings.keepAliveIntervalHours,
+            timeMinutes = settings.keepAliveTimeMinutes,
+        )
+
+    internal fun armAlarm(context: Context, nextAt: Long) {
         val alarmManager = context.getSystemService(AlarmManager::class.java)
         val operation = alarmIntent(context)
         if (canScheduleExactly(context)) {

@@ -74,6 +74,7 @@ class MainActivity : ComponentActivity() {
                             this@MainActivity,
                             SettingsRepository(this@MainActivity).load(),
                         )
+                        viewModel.refreshKeepAliveNextAt()
                         MissedCallScheduler.enqueue(this@MainActivity)
                     }
                 }
@@ -102,6 +103,7 @@ class MainActivity : ComponentActivity() {
                     onBatteryThresholdChange = viewModel::updateBatteryThreshold,
                     onKeepAliveChange = viewModel::updateKeepAliveEnabled,
                     onKeepAliveIntervalChange = viewModel::updateKeepAliveInterval,
+                    onKeepAliveTimeChange = viewModel::updateKeepAliveTime,
                     onRequestExactAlarms = {
                         viewModel.save()
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

@@ -31,15 +31,32 @@ class KeepAliveSchedulerTest {
             val before = System.currentTimeMillis()
             KeepAliveScheduler.schedule(context, settings, restart = true)
             val firstDeadline = prefs.getLong(KeepAliveScheduler.KEY_NEXT_AT, 0L)
-            assertTrue(firstDeadline >= before + TimeUnit.HOURS.toMillis(1))
+            assertTrue(firstDeadline > before)
+            assertTrue(firstDeadline <= System.currentTimeMillis() + TimeUnit.HOURS.toMillis(1))
+            assertEquals(
+                KeepAliveSchedule.nextSlotAfter(
+                    firstDeadline - 1,
+                    settings.keepAliveIntervalHours,
+                    settings.keepAliveTimeMinutes,
+                ),
+                firstDeadline,
+            )
+            assertTrue(
+                prefs.edit().putLong(KeepAliveScheduler.KEY_NEXT_AT, firstDeadline + 60_000L).commit(),
+            )
+            KeepAliveScheduler.schedule(context, settings)
+            assertEquals(firstDeadline, prefs.getLong(KeepAliveScheduler.KEY_NEXT_AT, 0L))
             KeepAliveScheduler.schedule(context, settings)
             assertEquals(firstDeadline, prefs.getLong(KeepAliveScheduler.KEY_NEXT_AT, 0L))
             assertNull(KeepAliveScheduler.takeDue(context))
             assertTrue(
                 prefs.edit().putLong(KeepAliveScheduler.KEY_NEXT_AT, before - 1).commit(),
             )
+            KeepAliveScheduler.schedule(context, settings)
+            assertEquals(before - 1, prefs.getLong(KeepAliveScheduler.KEY_NEXT_AT, 0L))
             val cycle = KeepAliveScheduler.takeDue(context)
             assertNotNull(cycle)
+            assertEquals(firstDeadline, cycle)
             assertNull(KeepAliveScheduler.takeDue(context))
             assertTrue(KeepAliveScheduler.isCurrentCycle(context, cycle!!))
             assertFalse(KeepAliveScheduler.isCurrentCycle(context, firstDeadline - 1))
@@ -70,7 +87,7 @@ class KeepAliveSchedulerTest {
         try {
             val testDeadline = System.currentTimeMillis() + 20_000L
             assertTrue(prefs.edit().putLong(KeepAliveScheduler.KEY_NEXT_AT, testDeadline).commit())
-            KeepAliveScheduler.schedule(context, settings)
+            KeepAliveScheduler.armAlarm(context, testDeadline)
             shell("input keyevent KEYCODE_SLEEP")
             shell("dumpsys battery unplug")
             val forceResult = shell("dumpsys deviceidle force-idle")

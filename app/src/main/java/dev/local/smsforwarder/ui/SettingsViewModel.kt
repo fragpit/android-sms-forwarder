@@ -11,6 +11,7 @@ import dev.local.smsforwarder.battery.BatteryMonitor
 import dev.local.smsforwarder.calls.MissedCallMonitor
 import dev.local.smsforwarder.calls.MissedCallScheduler
 import dev.local.smsforwarder.data.AppSettings
+import dev.local.smsforwarder.keepalive.KeepAliveSchedule
 import dev.local.smsforwarder.keepalive.KeepAliveScheduler
 import dev.local.smsforwarder.sms.ForwardingForegroundService
 import dev.local.smsforwarder.sms.RetryScheduler
@@ -34,6 +35,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     init {
         KeepAliveScheduler.schedule(appContext, state.settings)
         BatteryAlertScheduler.schedule(appContext, state.settings)
+        refreshKeepAliveNextAt()
+    }
+
+    fun refreshKeepAliveNextAt() {
+        state = state.copy(keepAliveNextAt = KeepAliveScheduler.nextAt(appContext))
     }
 
     fun updateToken(value: String) {
@@ -62,6 +68,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun updateKeepAliveInterval(value: String) {
         state = state.copy(keepAliveIntervalInput = value)
+    }
+
+    fun updateKeepAliveTime(value: String) {
+        state = state.copy(keepAliveTimeInput = value)
     }
 
     fun updateBatteryAlertEnabled(value: Boolean) {
@@ -124,7 +134,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private fun persistSettings(): AppSettings? {
         if (state.settings.keepAliveEnabled && !state.validKeepAliveInterval) {
-            state = state.copy(status = "Enter a whole number of hours (at least 1)")
+            state = state.copy(status = KEEP_ALIVE_INTERVAL_HINT)
+            return null
+        }
+        if (state.settings.keepAliveEnabled && !state.validKeepAliveTime) {
+            state = state.copy(status = KEEP_ALIVE_TIME_HINT)
             return null
         }
         if (state.settings.batteryAlertEnabled && !state.validBatteryThreshold) {
@@ -135,8 +149,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val settings = state.settings.trimmed().copy(
             batteryAlertThreshold = state.batteryThresholdInput.toIntOrNull()
                 ?.takeIf { it in 1..100 } ?: state.settings.batteryAlertThreshold,
-            keepAliveIntervalHours = state.keepAliveIntervalInput.toIntOrNull()
-                ?.takeIf { it >= 1 } ?: state.settings.keepAliveIntervalHours,
+            keepAliveIntervalHours = state.keepAliveIntervalInput.trim().toIntOrNull()
+                ?.takeIf { it in KeepAliveSchedule.ALLOWED_INTERVAL_HOURS }
+                ?: state.settings.keepAliveIntervalHours,
+            keepAliveTimeMinutes = KeepAliveSchedule.parseTime(state.keepAliveTimeInput)
+                ?: state.settings.keepAliveTimeMinutes,
         )
         if (!settingsRepository.save(settings)) {
             state = state.copy(status = "Could not save settings")
@@ -146,7 +163,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             appContext,
             settings,
             restart = previous.keepAliveEnabled != settings.keepAliveEnabled ||
-                previous.keepAliveIntervalHours != settings.keepAliveIntervalHours,
+                previous.keepAliveIntervalHours != settings.keepAliveIntervalHours ||
+                previous.keepAliveTimeMinutes != settings.keepAliveTimeMinutes,
         )
         BatteryAlertScheduler.schedule(
             appContext,
@@ -160,8 +178,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             settings = settings,
             batteryThresholdInput = settings.batteryAlertThreshold.toString(),
             keepAliveIntervalInput = settings.keepAliveIntervalHours.toString(),
+            keepAliveTimeInput = KeepAliveSchedule.formatTime(settings.keepAliveTimeMinutes),
+            keepAliveNextAt = KeepAliveScheduler.nextAt(appContext),
         )
         return settings
+    }
+
+    companion object {
+        private const val KEEP_ALIVE_INTERVAL_HINT = "Use 1, 2, 3, 4, 6, 8, 12 or 24 hours"
+        private const val KEEP_ALIVE_TIME_HINT = "Enter the time as HH:MM, for example 09:00"
     }
 
     private fun AppSettings.trimmed(): AppSettings = copy(

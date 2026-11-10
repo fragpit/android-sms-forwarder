@@ -36,31 +36,59 @@ class SettingsUiStateTest {
     }
 
     @Test
-    fun validatesWholePositiveHourIntervalsWithoutOverflow() {
-        val cases = mapOf(
+    fun validatesKeepAliveIntervalAndTime() {
+        val intervals = mapOf(
             "" to false,
             "0" to false,
             "-1" to false,
             "1.5" to false,
             "abc" to false,
+            "5" to false,
+            "48" to false,
+            "168" to false,
             "2147483648" to false,
             "1" to true,
+            "6" to true,
+            "12" to true,
             "24" to true,
-            "168" to true,
-            "2147483647" to true,
         )
-        cases.forEach { (input, expected) ->
+        intervals.forEach { (input, expected) ->
             assertEquals(
                 "Interval: $input",
                 expected,
                 SettingsUiState(keepAliveIntervalInput = input).validKeepAliveInterval,
             )
         }
+        val times = mapOf(
+            "" to false,
+            "9" to false,
+            "24:00" to false,
+            "09:60" to false,
+            "9:5" to false,
+            "09-00" to false,
+            "00:00" to true,
+            "9:00" to true,
+            "09:00" to true,
+            "23:59" to true,
+        )
+        times.forEach { (input, expected) ->
+            assertEquals(
+                "Time: $input",
+                expected,
+                SettingsUiState(keepAliveTimeInput = input).validKeepAliveTime,
+            )
+        }
+        assertFalse(SettingsUiState(keepAliveTimeInput = "25:00").validKeepAlive)
         assertFalse(AppSettings().keepAliveEnabled)
         assertEquals("24", SettingsUiState().keepAliveIntervalInput)
+        assertEquals("09:00", SettingsUiState().keepAliveTimeInput)
         assertEquals(
             "6",
             SettingsUiState(AppSettings(keepAliveIntervalHours = 6)).keepAliveIntervalInput,
+        )
+        assertEquals(
+            "21:30",
+            SettingsUiState(AppSettings(keepAliveTimeMinutes = 21 * 60 + 30)).keepAliveTimeInput,
         )
     }
 }

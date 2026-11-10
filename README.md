@@ -110,15 +110,23 @@ miss a call and restore connectivity to check queued delivery.
 
 ## Keep alive messages
 
-Enable `Send keep alive`, set `Keep alive interval (hours)`, and press
-`Save settings`. The default interval is 24 hours; any positive whole number
-of hours is accepted. Keep alive is off by default and works independently
-of SMS and missed call forwarding, using the same Telegram bot and chat.
+Enable `Send keep alive`, set `Keep alive time (HH:MM)` and
+`Keep alive interval (hours)`, and press `Save settings`. Messages are sent at
+fixed local times: the set time plus every interval within the day. The
+interval must divide a day evenly: 1, 2, 3, 4, 6, 8, 12, or 24 hours. The
+defaults are 09:00 and 24 hours, so one message arrives every day at 09:00.
+With 6 hours and 09:00, messages arrive at 03:00, 09:00, 15:00, and 21:00.
+Keep alive is off by default and works independently of SMS and missed call
+forwarding, using the same Telegram bot and chat. Settings saved by older
+versions with other intervals are rounded up to the next allowed value.
 
-The first message arrives after the selected interval and includes the phone's
-current time. Changing the interval starts a new countdown; saving unchanged
-settings or reopening the app preserves it. Turning the switch off and saving,
-or resetting app data, cancels the schedule. It survives reboot and app updates.
+Each message includes the phone's current time, and the settings screen shows
+the next scheduled delivery. A late alarm does not shift later messages: the
+next one is always aligned to the configured time. Changing the time zone or
+the clock realigns the schedule right away. If the phone was off at a
+scheduled time, one message is sent as soon as the schedule is restored, then
+delivery continues on schedule. Turning the switch off and saving, or resetting
+app data, cancels the schedule. It survives reboot and app updates.
 
 Keep alive uses a wake-up alarm that can run while the phone is in Doze, and
 sends directly during that wake-up. On Android 12+, allow `Alarms & reminders`
@@ -132,7 +140,7 @@ and low battery alarms from their saved deadlines; an overdue deadline fires
 right away. The watchdog only runs while one of these features is enabled.
 
 Delivery requires internet access. Failed requests get up to two background
-retries within the current interval. Missed heartbeats do not accumulate, so
+retries before the next scheduled time. Missed heartbeats do not accumulate, so
 reconnecting does not send a backlog. The app holds a short wake lock only while
 attempting delivery; it does not keep the phone awake between messages.
 Keep alive confirms that the app can reach Telegram; it does not verify SMS or
@@ -153,7 +161,8 @@ adb shell am instrument -w -e class \
 Install the current debug APK first and configure Telegram with keep alive
 enabled. The device test temporarily forces Doze and sends one real heartbeat,
 then restores the original schedule and power state. It also checks that
-unchanged settings preserve the deadline and disabling keep alive cancels it.
+deadlines align to the configured time, an overdue deadline is kept until it
+fires, and disabling keep alive cancels it.
 
 ## Low battery notifications
 

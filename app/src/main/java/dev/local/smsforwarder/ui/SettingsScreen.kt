@@ -37,6 +37,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /** Compose settings screen for forwarding configuration and test delivery. */
 @Composable
@@ -54,6 +57,7 @@ fun SettingsScreen(
     onBatteryThresholdChange: (String) -> Unit,
     onKeepAliveChange: (Boolean) -> Unit,
     onKeepAliveIntervalChange: (String) -> Unit,
+    onKeepAliveTimeChange: (String) -> Unit,
     onRequestExactAlarms: () -> Unit,
     onSenderFilterChange: (String) -> Unit,
     onRequestPermissions: () -> Unit,
@@ -244,7 +248,7 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            text = "Periodically confirm that the app can reach Telegram.",
+                            text = "Confirm at fixed times of day that the app can reach Telegram.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -258,6 +262,25 @@ fun SettingsScreen(
                 if (state.settings.keepAliveEnabled) {
                     OutlinedTextField(
                         modifier = Modifier.fillMaxWidth(),
+                        value = state.keepAliveTimeInput,
+                        onValueChange = onKeepAliveTimeChange,
+                        label = { Text("Keep alive time (HH:MM)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                        isError = !state.validKeepAliveTime,
+                        supportingText = {
+                            Text(
+                                if (!state.validKeepAliveTime) {
+                                    "Enter the time as HH:MM, for example 09:00."
+                                } else {
+                                    "Local phone time of the first daily message."
+                                },
+                            )
+                        },
+                    )
+
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
                         value = state.keepAliveIntervalInput,
                         onValueChange = onKeepAliveIntervalChange,
                         label = { Text("Keep alive interval (hours)") },
@@ -267,10 +290,9 @@ fun SettingsScreen(
                         supportingText = {
                             Text(
                                 if (!state.validKeepAliveInterval) {
-                                    "Enter a whole number of hours (at least 1)."
+                                    "Use 1, 2, 3, 4, 6, 8, 12 or 24 hours."
                                 } else {
-                                    "First message after this interval, including while asleep. " +
-                                        "Save to apply. Internet access is required."
+                                    keepAliveScheduleHint(state)
                                 },
                             )
                         },
@@ -288,7 +310,7 @@ fun SettingsScreen(
                     )
                     TextButton(
                         onClick = onRequestExactAlarms,
-                        enabled = (!state.settings.keepAliveEnabled || state.validKeepAliveInterval) &&
+                        enabled = (!state.settings.keepAliveEnabled || state.validKeepAlive) &&
                             (!state.settings.batteryAlertEnabled || state.validBatteryThreshold),
                     ) {
                         Text("Allow scheduled alerts")
@@ -359,4 +381,19 @@ fun SettingsScreen(
             )
         }
     }
+}
+
+private val keepAliveNextFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+
+private fun keepAliveScheduleHint(state: SettingsUiState): String {
+    val nextAt = state.keepAliveNextAt
+    val next = if (state.settings.keepAliveEnabled && nextAt > 0L) {
+        "Next: " + keepAliveNextFormatter.format(
+            Instant.ofEpochMilli(nextAt).atZone(ZoneId.systemDefault()),
+        ) + ". "
+    } else {
+        ""
+    }
+    return next + "Repeats from the set time, including while asleep. " +
+        "Save to apply. Internet access is required."
 }

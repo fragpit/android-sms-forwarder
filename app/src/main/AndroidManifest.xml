@@ -64,6 +64,15 @@
             android:exported="false" />
 
         <receiver
+            android:name=".keepalive.KeepAliveClockReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".sms.BootCompletedReceiver"
             android:enabled="true"
             android:exported="true">
